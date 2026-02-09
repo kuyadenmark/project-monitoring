@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Project Monitoring Login</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body {
+  background:#0f172a;
+  color:#fff;
+  font-family:Arial, sans-serif;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+}
+.box {
+  background:#020617;
+  padding:20px;
+  border-radius:10px;
+  width:100%;
+  max-width:360px;
+}
+input, button {
+  width:100%;
+  padding:10px;
+  margin-top:10px;
+  border-radius:6px;
+  border:none;
+}
+button {
+  background:#22c55e;
+  font-size:16px;
+}
+#status {
+  margin-top:12px;
+  font-size:14px;
+  white-space:pre-wrap;
+}
+</style>
+</head>
+<body>
+
+<div class="box">
+  <h3>Login</h3>
+  <input id="email" type="email" placeholder="Email" />
+  <input id="password" type="password" placeholder="Password" />
+  <button onclick="login()">LOGIN</button>
+  <div id="status"></div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://fmnsrvficfrbdroztmfr.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZtbnNydmZpY2ZyYmRyb3p0bWZyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA2MDg5OTMsImV4cCI6MjA4NjE4NDk5M30.agsF6jAz9kexOVCObAwVAFfx84xBtjPkKcfs2TuLavU";
+
+const supabase = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY
+);
+
+async function login() {
+  const status = document.getElementById("status");
+  status.textContent = "⏳ Logging in...";
+
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (error) {
+      status.textContent = "❌ ERROR:\n" + error.message;
+      return;
+    }
+
+    status.textContent = "✅ SUCCESS\nUser ID:\n" + data.user.id;
+
+    localStorage.setItem("sb-session", JSON.stringify(data.session));
+
+    setTimeout(() => {
+      window.location.href = "dashboard.html";
+    }, 1500);
+
+  } catch (e) {
+    status.textContent = "🔥 JS ERROR:\n" + e.message;
+  }
+}
+</script>
+
+</body>
+</html>
