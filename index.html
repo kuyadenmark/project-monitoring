@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Project Management v1.0</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+
+<style>
+body { font-family: Arial; margin: 20px; }
+.hidden { display: none; }
+input, select, button { padding: 8px; margin: 5px 0; width: 100%; }
+.card { border: 1px solid #ccc; padding: 10px; margin: 10px 0; }
+</style>
+</head>
+
+<body>
+
+<h2 id="title">Login</h2>
+
+<!-- LOGIN -->
+<div id="loginBox">
+  <input id="email" placeholder="Email">
+  <input id="password" type="password" placeholder="Password">
+  <button onclick="login()">Login</button>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard" class="hidden">
+  <p><b>Role:</b> <span id="roleText"></span></p>
+  <button onclick="logout()">Logout</button>
+
+  <!-- CREATE PROJECT -->
+  <div id="createProject" class="card hidden">
+    <h3>Create Project</h3>
+    <input id="pname" placeholder="Project Name">
+    <input id="pbudget" type="number" placeholder="Budget">
+    <button onclick="createProject()">Create</button>
+  </div>
+
+  <!-- PROJECT LIST -->
+  <div id="projects"></div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://fmnsrvficfrbdroztmfr.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZtbnNydmZpY2ZyYmRyb3p0bWZyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA2MDg5OTMsImV4cCI6MjA4NjE4NDk5M30.agsF6jAz9kexOVCObAwVAFfx84xBtjPkKcfs2TuLavU";
+const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let currentUser = null;
+let currentRole = null;
+
+/* LOGIN */
+async function login() {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) return alert(error.message);
+
+  currentUser = data.user;
+  loadProfile();
+}
+
+/* LOAD PROFILE */
+async function loadProfile() {
+  const { data } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", currentUser.id)
+    .single();
+
+  currentRole = data.role;
+  showDashboard();
+}
+
+/* DASHBOARD */
+function showDashboard() {
+  document.getElementById("loginBox").classList.add("hidden");
+  document.getElementById("dashboard").classList.remove("hidden");
+  document.getElementById("roleText").innerText = currentRole;
+
+  if (currentRole === "admin" || currentRole === "manager") {
+    document.getElementById("createProject").classList.remove("hidden");
+  }
+
+  loadProjects();
+}
+
+/* LOGOUT */
+async function logout() {
+  await supabase.auth.signOut();
+  location.reload();
+}
+
+/* CREATE PROJECT */
+async function createProject() {
+  const name = document.getElementById("pname").value;
+  const budget = document.getElementById("pbudget").value;
+
+  if (!name) return alert("Project name required");
+
+  const { error } = await supabase.from("projects").insert({
+    name,
+    budget
+  });
+
+  if (error) return alert(error.message);
+
+  document.getElementById("pname").value = "";
+  document.getElementById("pbudget").value = "";
+  loadProjects();
+}
+
+/* LOAD PROJECTS */
+async function loadProjects() {
+  const { data } = await supabase.from("projects").select("*").order("id");
+  const box = document.getElementById("projects");
+  box.innerHTML = "";
+
+  data.forEach(p => {
+    const div = document.createElement("div");
+    div.className = "card";
+    div.innerHTML = `
+      <b>${p.name}</b><br>
+      Budget: ${p.budget || 0}
+      <div id="actions-${p.id}"></div>
+    `;
+
+    if (currentRole === "admin" || currentRole === "manager") {
+      div.innerHTML += `<button onclick="deleteProject(${p.id})">Delete</button>`;
+    }
+
+    if (currentRole === "operator") {
+      div.innerHTML += `
+        <input placeholder="Expense amount" id="e-${p.id}">
+        <button onclick="addExpense(${p.id})">Add Expense</button>
+      `;
+    }
+
+    box.appendChild(div);
+  });
+}
+
+/* DELETE PROJECT */
+async function deleteProject(id) {
+  if (!confirm("Delete project?")) return;
+  await supabase.from("projects").delete().eq("id", id);
+  loadProjects();
+}
+
+/* ADD EXPENSE */
+async function addExpense(projectId) {
+  const amount = document.getElementById("e-" + projectId).value;
+  if (!amount) return alert("Enter amount");
+
+  await supabase.from("expenses").insert({
+    project_id: projectId,
+    amount
+  });
+
+  alert("Expense added");
+}
+</script>
+
+</body>
+</html>
